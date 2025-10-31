@@ -1,0 +1,27 @@
+ # ~/.config/mako/config
+
+font=FiraCode 11
+background-color=#1e1e2e
+text-color=#cdd6f4
+border-color=#89b4fa
+progress-color=over #a6e3a1
+
+anchor=top-right
+margin=20
+padding=10
+border-size=2
+border-radius=8
+
+ignore-timeout=false
+max-visible=10
+max-visible=5
+max-history=0
+group-by=app-name
+default-timeout=10000
+
+[urgency=normal]
+background-color=#45475a
+
+[urgency=high]
+background-color=#f38ba8
+text-color=#1e1e2e

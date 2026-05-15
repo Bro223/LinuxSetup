@@ -196,3 +196,33 @@ pdftotext input.pdf output.txt
 
 What it does:
 - Extracts text from a PDF file into a plain text file.
+
+Here’s how to document that command in `README.md`‑style Markdown:
+
+***
+
+### Convert `.docx` files to PDF with LibreOffice
+
+Command:
+
+```bash
+libreoffice --headless --convert-to pdf --outdir converted *.docx
+```
+
+What it does:
+
+- Converts all `.docx` files in the current directory into PDFs.
+- Uses `--headless` so LibreOffice runs without a GUI (good for scripts).
+- Places the resulting PDFs into the `converted/` directory (must exist or be created beforehand).
+
+Where to use it:
+
+- Run this from a terminal in the folder containing the `.docx` files.
+- The output file names match the input (e.g., `document.docx` → `document.pdf` inside `converted/`).
+
+Example setup:
+
+```bash
+mkdir converted
+libreoffice --headless --convert-to pdf --outdir converted *.docx
+```

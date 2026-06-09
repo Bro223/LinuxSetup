@@ -262,12 +262,13 @@ libreoffice --headless --convert-to pdf --outdir converted *.docx
 Command:
 
 ```bash
-rsync -R /path/to/source/ /path/to/destination/
+rsync -av /path/to/source/ /path/to/destination/
 ```
 
 What it does:
-- Syncs files and folders from source to destination.
-- The `-R` flag preserves the directory structure (recursive), so all folders inside the source folder get synced too.
+- Syncs files and folders from source to destination recursively.
+- The `-a` flag (archive mode) includes recursive copying (`-r`) automatically, so all folders and files are synced.
+- `-v` shows verbose output of what's being copied.
 - Trailing slash after source matters: with `/` it copies contents; without `/` it copies the folder itself.
 
 Simple example:
@@ -281,15 +282,16 @@ What it syncs:
 - **Destination:** `~/backup/myapp/` (directory structure is preserved)
 
 Useful flags:
-- `-a` : Archive mode (preserves permissions, timestamps, etc.)
+- `-a` : Archive mode (includes recursion, preserves permissions, timestamps, etc.)
 - `-v` : Verbose (shows what's being copied)
 - `--delete` : Deletes files in destination that don't exist in source
 - `-P` : Shows progress and partial file transfers
+- `-R` or `--relative` : Preserves the full source path structure (rarely needed for local backups)
 
 Example with flags:
 
 ```bash
-rsync -avR --delete ~/projects/myapp/ ~/backup/myapp/
+rsync -av --progress --delete ~/projects/myapp/ ~/backup/myapp/
 ```
 
 ## Copy files to remote server with scp (SSH)

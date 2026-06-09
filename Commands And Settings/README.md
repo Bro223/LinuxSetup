@@ -156,6 +156,36 @@ What it does:
 - Enables and starts `systemd-resolved` immediately.
 - Useful for fixing or standardizing DNS resolution on the system.
 
+## Disable sleep and suspend targets
+
+Disable sleep, suspend, hibernate, and hybrid-sleep targets:
+
+```bash
+sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+```
+
+What it does:
+- Prevents the system from entering sleep, suspend, hibernate, or hybrid-sleep modes.
+- Masks the systemd targets by creating symlinks to `/dev/null`.
+
+Check the status of the masked targets:
+
+```bash
+sudo systemctl status sleep.target suspend.target hibernate.target hybrid-sleep.target
+```
+
+What it does:
+- Shows that all four targets are masked and inactive.
+
+Re-enable sleep and suspend targets:
+
+```bash
+sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target
+```
+
+What it does:
+- Removes the masks, allowing the system to enter sleep, suspend, hibernate, or hybrid-sleep modes again.
+
 ## Bluetooth power on
 
 Run this in a terminal:

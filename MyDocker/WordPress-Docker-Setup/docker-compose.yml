@@ -1,0 +1,44 @@
+services:
+  db:
+    image: mariadb:11
+    container_name: wp-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    volumes:
+      - ./db_data:/var/lib/mysql
+
+  wordpress:
+    build: .
+    container_name: wp-app
+    depends_on:
+      - db
+    restart: always
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      HOST_UID: ${UID:-1000}
+      HOST_GID: ${GID:-1000}
+    volumes:
+      - ./www:/var/www/html
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: wp-phpmyadmin
+    depends_on:
+      - db
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root

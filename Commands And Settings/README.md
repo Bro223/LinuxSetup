@@ -226,3 +226,333 @@ Example setup:
 mkdir converted
 libreoffice --headless --convert-to pdf --outdir converted *.docx
 ```
+
+## Sync files and folders with rsync (recursive)
+
+Command:
+
+```bash
+rsync -R /path/to/source/ /path/to/destination/
+```
+
+What it does:
+- Syncs files and folders from source to destination.
+- The `-R` flag preserves the directory structure (recursive), so all folders inside the source folder get synced too.
+- Trailing slash after source matters: with `/` it copies contents; without `/` it copies the folder itself.
+
+Simple example:
+
+```bash
+rsync -R ~/projects/myapp/ ~/backup/myapp/
+```
+
+What it syncs:
+- **Source:** All files and folders inside `~/projects/myapp/`
+- **Destination:** `~/backup/myapp/` (directory structure is preserved)
+
+Useful flags:
+- `-a` : Archive mode (preserves permissions, timestamps, etc.)
+- `-v` : Verbose (shows what's being copied)
+- `--delete` : Deletes files in destination that don't exist in source
+- `-P` : Shows progress and partial file transfers
+
+Example with flags:
+
+```bash
+rsync -avR --delete ~/projects/myapp/ ~/backup/myapp/
+```
+
+## Copy files to remote server with scp (SSH)
+
+Command:
+
+```bash
+scp /path/to/local/file user@remote-host:/path/to/remote/destination/
+```
+
+What it does:
+- Securely copies files from your local machine to a remote server via SSH.
+- Uses the same authentication as SSH (keys or password).
+
+Simple example:
+
+```bash
+scp ~/myfile.txt user@example.com:/home/user/files/
+```
+
+What it syncs:
+- **Source:** `~/myfile.txt` (local file on your machine)
+- **Destination:** `/home/user/files/` on `example.com` as `user`
+
+Copy from remote to local (reverse direction):
+
+```bash
+scp user@example.com:/home/user/files/myfile.txt ~/downloads/
+```
+
+Copy entire directories:
+
+```bash
+scp -r user@example.com:/home/user/project ~/backup/
+```
+
+## Run a local PHP development server
+
+Command:
+
+```bash
+php -S 127.0.0.1:8000
+```
+
+What it does:
+- Starts a built-in PHP development server on `localhost:8000`.
+- `127.0.0.1` means the server is only accessible from your local machine.
+- Access it in your browser at `http://127.0.0.1:8000`
+
+Variations:
+
+```bash
+# With a router script (for frameworks)
+php -S 127.0.0.1:8000 router.php
+
+# With custom document root (-t for document-root)
+php -S 127.0.0.1:8000 -t public/ router.php
+
+# Custom port
+php -S 127.0.0.1:9000
+
+# Accessible from any machine on your network
+php -S 0.0.0.0:8000
+```
+
+## Delete files and folders
+
+### Remove a single file
+
+Command:
+
+```bash
+rm filename.txt
+```
+
+What it does:
+- Permanently deletes the file `filename.txt`.
+- Cannot be undone, so be careful.
+
+### Remove a folder and all its contents (recursive)
+
+Command:
+
+```bash
+rm -rf foldername/
+```
+
+What it does:
+- `-r` : Recursively delete the folder and everything inside it (all subfolders and files).
+- `-f` : Force delete without prompting for confirmation.
+- Cannot be undone, so be very careful with this command.
+
+Safe alternative (prompts before deletion):
+
+```bash
+rm -r foldername/
+```
+
+What it does:
+- Same as above but prompts you before deleting each file (slower but safer).
+
+## Docker Compose commands
+
+### Start containers in the background
+
+Command:
+
+```bash
+docker compose up -d
+```
+
+What it does:
+- Starts all services defined in `docker-compose.yml`.
+- `-d` flag runs containers in the background (detached mode).
+
+### Build and start containers (rebuild images)
+
+Command:
+
+```bash
+docker compose up -d --build
+```
+
+What it does:
+- Rebuilds all images from their Dockerfiles.
+- Starts containers in the background.
+- Useful when you've made changes to your code or Dockerfile.
+
+### Stop and remove containers
+
+Command:
+
+```bash
+docker compose down
+```
+
+What it does:
+- Stops all running containers defined in `docker-compose.yml`.
+- Removes the containers (but keeps volumes and networks by default).
+
+### Use with custom project name
+
+Command:
+
+```bash
+docker compose -p myproject up -d
+```
+
+What it does:
+- `-p myproject` : Sets a custom project name (useful when running multiple instances).
+- Helpful for organizing containers by project name.
+
+## Execute commands inside a running Docker container
+
+Command:
+
+```bash
+docker exec -it container-id bash
+```
+
+What it does:
+- `-i` : Keep STDIN open even if not attached (interactive).
+- `-t` : Allocate a pseudo-terminal.
+- `-it` together gives you an interactive shell inside the container.
+- Useful for debugging, running commands, or exploring the container filesystem.
+
+Examples:
+
+```bash
+# Start a bash shell inside the container
+docker exec -it my-container bash
+
+# Run a single command
+docker exec -it my-container ls -la
+
+# Run as a specific user
+docker exec -u www-data -it my-container bash
+```
+
+## List running Docker containers
+
+Command:
+
+```bash
+docker ps
+```
+
+What it does:
+- Lists all running containers with their IDs, names, images, status, and ports.
+- Shows container details needed for `docker exec` commands.
+
+Examples:
+
+```bash
+# Show all containers (including stopped ones)
+docker ps -a
+
+# Show only container IDs
+docker ps -q
+```
+
+## Copy files to/from Docker containers
+
+Command:
+
+```bash
+docker cp /path/to/local/file container-id:/path/in/container/
+```
+
+What it does:
+- Copies files from your local machine into a running container.
+- Works bidirectionally (container to local and local to container).
+
+Examples:
+
+```bash
+# Copy file FROM local TO container
+docker cp ~/myfile.txt my-container:/app/
+
+# Copy file FROM container TO local
+docker cp my-container:/app/myfile.txt ~/downloads/
+
+# Copy entire directory
+docker cp ~/myproject/ my-container:/app/
+```
+
+## Git version control commands
+
+### Stage all changes
+
+Command:
+
+```bash
+git add .
+```
+
+What it does:
+- Stages all modified and new files for commit.
+- `.` means "everything in current directory and below".
+
+### Commit staged changes
+
+Command:
+
+```bash
+git commit -m "commit message"
+```
+
+What it does:
+- Creates a commit with the staged changes.
+- `-m` flag lets you add a commit message directly.
+
+Example:
+
+```bash
+git commit -m "VSD-7508: Fixed login bug"
+```
+
+### Push commits to remote repository
+
+Command:
+
+```bash
+git push
+```
+
+What it does:
+- Uploads your local commits to the remote repository (origin/main by default).
+- Pushes the current branch to its remote tracking branch.
+
+## File and directory listing
+
+### List files with detailed info (fancy ls)
+
+Command:
+
+```bash
+lsd
+```
+
+What it does:
+- Modern replacement for `ls` command with colors and icons.
+- Shows file types, permissions, and sizes in an easy-to-read format.
+
+Examples:
+
+```bash
+# Show all files including hidden ones
+lsd -a
+
+# List with detailed information
+lsd -l
+
+# Show all with details
+lsd -la
+```

@@ -2,7 +2,7 @@
 
 A collection of useful configs, commands, and tweaks for a Hyprland-based Linux setup, including NVIDIA, multi-GPU, Waybar, Bluetooth, networking, and PDF tools.
 
-## NVIDIA environment variables
+## NVIDIA environment variables and render settings
 
 Paste this into `~/.config/hypr/hyprland.conf`:
 
@@ -10,15 +10,32 @@ Paste this into `~/.config/hypr/hyprland.conf`:
 env = NVD_BACKEND,direct
 env = LIBVA_DRIVER_NAME,nvidia
 env = __GLX_VENDOR_LIBRARY_NAME,nvidia
-env = XDG_SESSION_TYPE,wayland
-env = WLR_NO_HARDWARE_CURSORS,1
 env = AQ_DRM_DEVICES,/dev/dri/nvidia-dgpu:/dev/dri/intel-igpu
 env = AQ_FORCE_LINEAR_BLIT,0
+
+render {
+    direct_scanout = 2
+    new_render_scheduling = 1
+}
+
+cursor {
+    no_hardware_cursors = false
+    no_break_fs_vrr = false
+}
+
+misc {
+    disable_hyprland_logo = true
+    enable_swallow = true
+    mouse_move_focuses_monitor = true
+}
 ```
 
 What it does:
 - Sets NVIDIA-specific environment variables for Hyprland on Wayland.
 - Helps with video acceleration, GLX vendor selection, cursor issues, and multi-GPU ordering.
+- Enables optimized rendering with direct scanout and new render scheduling.
+- Configures cursor behavior with hardware cursor support and FreeSync control.
+- Customizes miscellaneous settings for logo visibility, window swallowing, and monitor focus behavior.
 
 Optional debug block for visual artifacts while moving windows:
 

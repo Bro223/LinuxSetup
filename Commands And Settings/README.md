@@ -274,6 +274,33 @@ mkdir converted
 libreoffice --headless --convert-to pdf --outdir converted *.docx
 ```
 
+### Convert image files to PDF with img2pdf
+
+Command:
+
+```bash
+img2pdf *.png --output converted/%.pdf
+```
+
+What it does:
+
+- Converts all `.png` files in the current directory into individual PDFs.
+- The `%.pdf` pattern converts each image to a separate PDF with the same base name.
+- Places the resulting PDFs into the `converted/` directory (must exist or be created beforehand).
+
+Where to use it:
+
+- Run this from a terminal in the folder containing the image files.
+- The output file names match the input (e.g., `image.png` → `image.pdf` inside `converted/`).
+- Works with various image formats: `.png`, `.jpg`, `.jpeg`, `.bmp`, etc.
+
+Example setup:
+
+```bash
+mkdir converted
+img2pdf *.png --output converted/%.pdf
+```
+
 ## Sync files and folders with rsync (recursive)
 
 Command:

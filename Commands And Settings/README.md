@@ -605,3 +605,58 @@ lsd -l
 # Show all with details
 lsd -la
 ```
+
+## Fix Wi-Fi conflicts between iwd and NetworkManager (Omarchy setup)
+
+Use this minimal fix set to stop Omarchy's iwd from fighting NetworkManager and make NM handle Wi‑Fi cleanly. If `iwd.service` is still running while NetworkManager is also running, they conflict over Wi‑Fi control.
+
+### Main fix (5 steps)
+
+```bash
+# 1) Stop the standalone iwd service so it doesn't grab Wi-Fi first
+sudo systemctl disable --now iwd.service
+
+# 2) Keep NetworkManager as the only manager
+sudo systemctl enable --now NetworkManager.service
+
+# 3) If you previously forced NM to use iwd, remove that backend file
+sudo rm -f /etc/NetworkManager/conf.d/wifi_backend.conf
+
+# 4) Restart NM
+sudo systemctl restart NetworkManager.service
+
+# 5) Check status
+systemctl status iwd NetworkManager systemd-networkd
+nmcli device status
+```
+
+### Extra safety (optional, if using Omarchy defaults)
+
+If you want to be extra safe and ensure Omarchy's default network stack stays out of the way, also keep `systemd-networkd` disabled:
+
+```bash
+sudo systemctl disable --now systemd-networkd.service systemd-networkd-wait-online.service
+```
+
+### Troubleshooting
+
+For eduroam/TalTech cases, `connect-failed, status: 1` lines in iwd logs mean the standalone iwd attempt is failing during enterprise authentication. Once iwd is disabled as a service, test with:
+
+```bash
+nmcli device wifi list
+```
+
+Then reconnect through NetworkManager instead of the Omarchy Wi‑Fi icon.
+
+If `nmcli device status` still shows Wi‑Fi as unavailable after that, run:
+
+```bash
+rfkill list
+nmcli radio wifi on
+sudo ip link set wlan0 up
+sudo systemctl restart NetworkManager
+```
+
+### Key rule
+
+**Only one thing should manage Wi‑Fi**. In most cases, that should be NetworkManager, not Omarchy's standalone iwd service.

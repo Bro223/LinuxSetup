@@ -774,6 +774,61 @@ What it does:
 - Without a model suffix, commands apply to both models.
 - With `3b` or `7b` suffix, you can manage individual models (useful for freeing resources).
 
+### Auto-start status
+
+**Models do NOT auto-start on boot.** No systemd service, no autostart entry, and no shell script is configured to start them automatically. They only run when you explicitly start them. Your GPU stays free for games and normal work. 🎮
+
+### Stop the models
+
+To stop only the 7B model:
+
+```bash
+bash /home/aleks/.local/share/llama-server/start.sh stop 7b
+```
+
+To stop all running models:
+
+```bash
+bash /home/aleks/.local/share/llama-server/start.sh stop
+```
+
+What it does:
+- Frees up GPU memory and CPU resources.
+- The models can be started again anytime you need them.
+
+### Where to run commands from
+
+You can run the start.sh script from anywhere using the full path:
+
+```bash
+bash /home/aleks/.local/share/llama-server/start.sh [command]
+```
+
+Or navigate to the directory first:
+
+```bash
+cd /home/aleks/.local/share/llama-server
+bash start.sh [command]
+```
+
+### Full manual usage reference
+
+```bash
+# Start the 7B (smarter, slower)
+bash /home/aleks/.local/share/llama-server/start.sh start 7b
+
+# Or start the 3B (faster, lighter)
+bash /home/aleks/.local/share/llama-server/start.sh start 3b
+
+# Check what's running
+bash /home/aleks/.local/share/llama-server/start.sh status
+
+# Stop all models
+bash /home/aleks/.local/share/llama-server/start.sh stop
+```
+
+
+
 
 
 ## Tmux session and window management

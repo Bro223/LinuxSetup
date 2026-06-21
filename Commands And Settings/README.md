@@ -687,3 +687,153 @@ sudo systemctl restart NetworkManager
 ### Key rule
 
 **Only one thing should manage Wi‑Fi**. In most cases, that should be NetworkManager, not Omarchy's standalone iwd service.
+
+## Manage the local LLM model server
+
+Control the local language model server using the convenience script at `~/.local/bin/llama-server-ctl`:
+
+### Start the server
+
+Command:
+
+```bash
+~/.local/bin/llama-server-ctl start
+```
+
+What it does:
+- Starts the local model server in the background.
+- The server is then available for API calls or local inference.
+
+### Stop the server
+
+Command:
+
+```bash
+~/.local/bin/llama-server-ctl stop
+```
+
+What it does:
+- Stops the running model server.
+- Useful when you need to free up GPU/CPU resources or perform maintenance.
+
+### Check server status
+
+Command:
+
+```bash
+~/.local/bin/llama-server-ctl status
+```
+
+What it does:
+- Shows whether the model server is currently running or stopped.
+
+### Restart the server
+
+Command:
+
+```bash
+~/.local/bin/llama-server-ctl restart
+```
+
+What it does:
+- Stops and immediately starts the server again.
+- Useful for reloading configuration changes or troubleshooting issues.
+
+### Current local models
+
+Both Qwen models are currently running:
+
+```
+┌──────────────────────────────┬────────────────┬────────────┐
+│ Model                        │ Port           │ Status     │
+├──────────────────────────────┼────────────────┼────────────┤
+│ Qwen 2.5 3B (Q4_K_M, 2.0 GB) │ localhost:8000 │ ✅ Running │
+├──────────────────────────────┼────────────────┼────────────┤
+│ Qwen 2.5 7B (Q4_K_M, 4.4 GB) │ localhost:8001 │ ✅ Running │
+└──────────────────────────────┴────────────────┴────────────┘
+```
+
+Both models are added as separate providers in pi's `models.json`:
+- `local-3b` → model ID `qwen2.5-3b-instruct` on `localhost:8000`
+- `local-7b` → model ID `qwen2.5-7b-instruct` on `localhost:8001`
+
+### Manage individual models
+
+You can control both models together or manage them separately:
+
+Command:
+
+```bash
+~/.local/bin/llama-server-ctl status           # Show status of both
+~/.local/bin/llama-server-ctl start            # Start both models
+~/.local/bin/llama-server-ctl stop 7b          # Stop only the 7B model
+~/.local/bin/llama-server-ctl restart 3b       # Restart only the 3B model
+```
+
+What it does:
+- Without a model suffix, commands apply to both models.
+- With `3b` or `7b` suffix, you can manage individual models (useful for freeing resources).
+
+
+
+## Tmux session and window management
+
+A comprehensive list of tmux commands for managing sessions, windows, and panes in Omarchy.
+
+### Basic session management
+
+| Action | Command (inside tmux) | Outside/alternative |
+|--------|---|---|
+| **List sessions** | `Ctrl+Space` then `s` (interactive picker) | `tmux ls` |
+| **Detach (exit without killing)** | `Ctrl+Space` then `d` | – |
+| **Create named session** | – | `tmux new -s codelocal` |
+| **Create named session (detached)** | – | `tmux new -ds codelocal` |
+| **Attach to existing session** | – | `tmux attach -t codelocal` |
+| **Switch to another session inside tmux** | `Ctrl+Space` then `s` (pick) or `tmux switch -t name` | – |
+
+### Window / tab management
+
+| Action | Command |
+|--------|---------|
+| **New window** | `Ctrl+Space` then `c` |
+| **Rename current window** | `Ctrl+Space` then `,` |
+| **Close current window (kill)** | `Ctrl+Space` then `&` → `y` |
+| **Close specific window** | `tmux kill-window -t 2` |
+| **Close all windows except current** | `tmux kill-window -a` |
+| **Jump to window by number** | `Alt+1` … `Alt+9` (Omarchy) |
+| **Previous / next window** | `Alt+h` / `Alt+l` (Omarchy) |
+| **Move window left / right** | `Alt+H` / `Alt+L` (Omarchy) |
+
+### Pane management (inside a window)
+
+| Action | Command |
+|--------|---------|
+| **Split pane vertically** | `Ctrl+Space` then `%` |
+| **Split pane horizontally** | `Ctrl+Space` then `"` |
+| **Close current pane** | `Ctrl+Space` then `x` → `y` or type `exit` |
+| **Navigate panes** | Arrow keys after prefix, or `Ctrl+Space` + arrow |
+| **Kill pane (direct)** | `tmux kill-pane -t 0` |
+
+### Omarchy‑specific layout helpers
+
+| Command | What it does |
+|---------|---|
+| `tdl [agent]` | Three‑way split: editor (left), agent (right), terminal (bottom) |
+| `tdlm [agent]` | Same layout per subdirectory (multiple windows) |
+| `tsl [panes] [command]` | Grid of panes |
+
+### One‑liner to create a session with named windows
+
+Command:
+
+```bash
+tmux new -s codelocal -n editor \; \
+  neww -n build \; \
+  neww -n git \; \
+  selectw -t 0
+```
+
+What it does:
+- Spawns a session named `codelocal` with three windows: `editor`, `build`, and `git`.
+- Lands in window 0 (the `editor` window) by default.
+- Useful for quickly setting up a project workspace with predefined window names.

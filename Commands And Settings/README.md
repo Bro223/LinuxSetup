@@ -739,6 +739,55 @@ What it does:
 - Stops and immediately starts the server again.
 - Useful for reloading configuration changes or troubleshooting issues.
 
+### Clear saved session checkpoints
+
+Command:
+
+```bash
+rm -rf ~/.pi/agent/ayu/checkpoints/sessions
+```
+
+What it does:
+- Removes stored session checkpoint data for the `ayu` agent.
+- Use this when you want to reset persisted session state.
+
+### Always use no-session mode
+
+If you always want no-session behavior, add a shell alias or wrapper:
+
+```bash
+alias pi='pi --no-session'
+
+pi --no-session
+```
+
+What it does:
+- Makes `pi` run in no-session mode by default.
+- You can also call `pi --no-session` directly when you want to bypass sessions without an alias.
+
+### Common pi agent commands
+
+Command:
+
+```bash
+pi "Read package.json and summarize the dependencies"
+pi -p "List all .ts files in src/"
+pi --continue "What did we discuss?"
+pi --resume
+pi --name "Refactor auth module"
+pi --list-models
+pi --export ~/.pi/agent/sessions/session.jsonl output.html
+```
+
+What it does:
+- `pi "..."` starts an interactive agent session with an initial prompt.
+- `pi -p "..."` runs non-interactively and exits after processing the prompt.
+- `pi --continue` reopens the previous session thread.
+- `pi --resume` lets you pick an existing session to continue.
+- `pi --name` gives the session a readable label.
+- `pi --list-models` shows available models for selection or cycling.
+- `pi --export` converts a session log into HTML for review or sharing.
+
 ### Current local models
 
 Both Qwen models are currently running:

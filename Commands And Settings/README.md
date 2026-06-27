@@ -173,6 +173,18 @@ What it does:
 - Enables and starts `systemd-resolved` immediately.
 - Useful for fixing or standardizing DNS resolution on the system.
 
+## Schedule a poweroff with systemd-run
+
+Run this command in a terminal:
+
+```bash
+sudo systemd-run --on-active=30min /usr/bin/systemctl poweroff
+```
+
+What it does:
+- Schedules a poweroff 30 minutes from when the command is started.
+- Useful when you want to delay shutdown without keeping a shell open.
+
 ## Disable sleep and suspend targets
 
 Disable sleep, suspend, hibernate, and hybrid-sleep targets:

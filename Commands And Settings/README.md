@@ -618,6 +618,18 @@ What it does:
 - Uploads your local commits to the remote repository (origin/main by default).
 - Pushes the current branch to its remote tracking branch.
 
+### Stage, commit, and push in one line
+
+Command:
+
+```bash
+git add . && git commit -m "update notes" && git push
+```
+
+What it does:
+- Stages all changes, creates a commit with a generic message, and pushes it to the remote repository.
+- Use this when you want a quick all-in-one publish command.
+
 ## File and directory listing
 
 ### List files with detailed info (fancy ls)
@@ -750,6 +762,20 @@ Command:
 What it does:
 - Stops and immediately starts the server again.
 - Useful for reloading configuration changes or troubleshooting issues.
+
+### Clear saved sessions and checkpoints
+
+Command:
+
+```bash
+du -sh ~/.pi/agent/sessions ~/.pi/agent/ayu/checkpoints/sessions 2>/dev/null
+rm -rf ~/.pi/agent/sessions
+rm -rf ~/.pi/agent/ayu/checkpoints/sessions
+```
+
+What it does:
+- Shows how much space the stored Pi agent sessions and checkpoint sessions are using.
+- Removes the saved session logs and the `ayu` checkpoint sessions to free up disk space.
 
 ### Clear saved session checkpoints
 

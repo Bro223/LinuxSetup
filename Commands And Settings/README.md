@@ -771,11 +771,13 @@ Command:
 du -sh ~/.pi/agent/sessions ~/.pi/agent/ayu/checkpoints/sessions 2>/dev/null
 rm -rf ~/.pi/agent/sessions
 rm -rf ~/.pi/agent/ayu/checkpoints/sessions
+rm -f ~/.pi/agent/ayu/checkpoints/sessions/ephemeral/.git/objects/pack/tmp_pack_*
 ```
 
 What it does:
 - Shows how much space the stored Pi agent sessions and checkpoint sessions are using.
 - Removes the saved session logs and the `ayu` checkpoint sessions to free up disk space.
+- Removes temporary Git pack files inside the ephemeral checkpoint session tree.
 
 ### Clear saved session checkpoints
 

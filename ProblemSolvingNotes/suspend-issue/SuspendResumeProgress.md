@@ -1231,7 +1231,17 @@ kernel eDP link training race — and it also failed.
 **NVIDIA limitation:** Quadro P1000 (GP107/Pascal) dropped in 590 series.
 580.159.04 is the final available driver. No upgrade path.
 
-**Recommendation:** Switch Intel to primary GPU. Use `prime-run` for NVIDIA compute.
-Single-GPU InteL + i915 suspend is a solved problem on Linux.
+**Recommendation (Option 1):** Switch Intel to primary GPU. Use `prime-run` for NVIDIA compute.
+Single-GPU Intel + i915 suspend is a solved problem on Linux.
+
+**Alternative (Option 2 — UNTESTED):** Try **hibernate (S4)** instead of suspend (S3).
+Hibernate performs a full power cycle, which avoids the simultaneous GPU state restoration
+race entirely — both NVIDIA and i915 initialize fresh and sequentially during kernel boot.
+`nvidia-hibernate.service` is already enabled on this system.
+
+See `HibernateApproach.md` in this directory for setup instructions and readiness checks.
+
+The corresponding check script is at `.check-hibernate.sh` —
+run `bash .check-hibernate.sh` from the `suspend-issue/` directory.
 
 ```

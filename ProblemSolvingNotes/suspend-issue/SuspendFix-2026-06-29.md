@@ -374,8 +374,13 @@ workaround found.
 **NVIDIA limitation:** Quadro P1000 (GP107, Pascal) was dropped from 590 series.
 Driver 580.159.04 is the final available version. No upgrade path.
 
-**Recommendation:** Switch Intel to primary GPU for a clean suspend/resume experience.
+**Recommendation (Option 1):** Switch Intel to primary GPU for a clean suspend/resume experience.
 Use `prime-run` for NVIDIA CUDA/compute tasks.
+
+**Alternative (Option 2 — UNTESTED):** Try **hibernate (S4)** instead of suspend (S3).
+Hibernate avoids the GPU state restoration race by doing a full power cycle.
+See `HibernateApproach.md` in this directory for details and setup instructions.
+`nvidia-hibernate.service` is already enabled on this system.
 
 ### Files Preserved (Genuine Fixes, Not Suspend-Related)
 

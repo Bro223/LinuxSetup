@@ -91,6 +91,41 @@ What it does:
 - Enables US, Estonian, and Russian keyboard layouts.
 - Switches layouts with `Alt+Shift`.
 
+## Icon theme switching
+
+Current icon theme:
+
+```bash
+gsettings get org.gnome.desktop.interface icon-theme
+```
+
+Try a new icon theme:
+
+```bash
+# Install Papirus on Arch-based systems
+sudo pacman -S papirus-icon-theme
+
+# Switch to Papirus
+gsettings set org.gnome.desktop.interface icon-theme "Papirus"
+
+# Try the dark variant
+gsettings set org.gnome.desktop.interface icon-theme "Papirus-Dark"
+
+# Revert to the current setup
+gsettings set org.gnome.desktop.interface icon-theme "Yaru-blue"
+```
+
+List installed icon themes:
+
+```bash
+ls /usr/share/icons/
+```
+
+What it does:
+- Lets you quickly switch the tray and desktop icon theme.
+- Papirus is a good contrast-heavy option for network and status icons.
+- You can try any installed theme by replacing the name in the `gsettings set` command.
+
 ## Waybar language module
 
 Paste this into `~/.config/waybar/config`:

@@ -10,16 +10,26 @@ services:
       MYSQL_PASSWORD: wordpress
     volumes:
       - ./db_data:/var/lib/mysql
+      - ./db_config:/etc/mysql/mariadb.conf.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - wp-net
 
   wordpress:
     build: .
     container_name: wp-app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: always
     user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "8080:80"
+      - "8085:80"
     environment:
       WORDPRESS_DB_HOST: db:3306
       WORDPRESS_DB_USER: wordpress
@@ -29,16 +39,35 @@ services:
       HOST_GID: ${GID:-1000}
     volumes:
       - ./www:/var/www/html
+    networks:
+      - wp-net
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: wp-mailpit
+    restart: always
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+    networks:
+      - wp-net
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: wp-phpmyadmin
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: always
     ports:
-      - "8081:80"
+      - "8084:80"
     environment:
       PMA_HOST: db
       PMA_USER: root
       PMA_PASSWORD: root
+    networks:
+      - wp-net
+
+networks:
+  wp-net:
+    driver: bridge

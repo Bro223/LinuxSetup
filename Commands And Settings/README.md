@@ -80,16 +80,69 @@ What it does:
 
 ## Keyboard layout switching
 
-Paste this into `~/.config/hypr/hyprland.conf`:
+Omarchy runs the Lua config path, so the override goes in `~/.config/hypr/input.lua`
+(not `hyprland.conf` — that file is no longer loaded after the update):
 
-```ini
-kb_layout = us,ee,ru
-kb_options = grp:alt_shift_toggle
+```lua
+hl.config({
+  input = {
+    -- English, Estonian, and Russian layouts; switch with Alt+Shift.
+    kb_layout = "us,ee,ru",
+    kb_options = "grp:alt_shift_toggle",
+  },
+})
+```
+
+Apply and verify:
+
+```bash
+hyprctl reload
+hyprctl configerrors        # should be empty
+hyprctl getoption input:kb_layout   # str: us,ee,ru
+hyprctl devices             # keyboards show: l "us,ee,ru", o "grp:alt_shift_toggle"
 ```
 
 What it does:
 - Enables US, Estonian, and Russian keyboard layouts.
 - Switches layouts with `Alt+Shift`.
+
+Note: the old `input.conf` values (`kb_layout = us,ee,ru` / `kb_options = grp:alt_shift_toggle`)
+are inert when the Lua config is active — keep the setting in `input.lua`.
+
+## Battery charge threshold (TLP) — laptop battery health
+
+Set charge start/stop thresholds in `/etc/tlp.conf` so the battery only charges
+between 75% and 80% (prevents 100% charge stress, extends battery lifespan):
+
+```ini
+# /etc/tlp.conf
+START_CHARGE_THRESH_BAT0=75
+STOP_CHARGE_THRESH_BAT0=80
+START_CHARGE_THRESH_BAT1=75
+STOP_CHARGE_THRESH_BAT1=80
+```
+
+Apply:
+
+```bash
+sudo systemctl restart tlp
+sudo tlp start
+```
+
+Verify:
+
+```bash
+sudo tlp-stat -b      # battery status + thresholds
+cat /sys/class/power_supply/BAT0/charge_control_start_threshold
+cat /sys/class/power_supply/BAT0/charge_control_end_threshold
+```
+
+What it does:
+- Keeps the battery between 75% and 80% — prevents stress at 100% and extends battery lifespan.
+- Thresholds are set for both BAT0 and BAT1.
+
+Note: `/sys/class/power_supply/BAT0/charge_control_start_threshold` may read `74`
+— the battery firmware rounds the start threshold down; the TLP config itself is 75.
 
 ## Icon theme switching
 

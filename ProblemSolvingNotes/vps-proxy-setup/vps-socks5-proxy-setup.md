@@ -10,16 +10,16 @@ It installs and configures 3proxy on a fresh Ubuntu VPS, binds a SOCKS5 listener
 
 Use these values exactly as shown unless they need to be changed:
 
-- VPS IP: `VPS_IP`
+- VPS IP: `<VPS_IP>`
 - Proxy port: `1080`
-- Proxy username: `PROXY_USER`
-- Proxy password: `PROXY_PASS`
+- Proxy username: `<PROXY_USER>`
+- Proxy password: `<PROXY_PASS>`
 - SSH port: `22`
 
 ## Step 1: Connect to the VPS
 
 ```bash
-ssh root@VPS_IP
+ssh root@<VPS_IP>
 ```
 
 ## Step 2: Install and configure 3proxy
@@ -32,8 +32,8 @@ set -euo pipefail
 
 PROXY_PORT=1080
 SSH_PORT=22
-PROXY_USER="PROXY_USER"
-PROXY_PASS="PROXY_PASS"
+PROXY_USER="<PROXY_USER>"
+PROXY_PASS="<PROXY_PASS>"
 
 IPS=$(ip -4 -o addr show scope global | awk '{print $4}' | cut -d/ -f1)
 [ -n "$IPS" ] || { echo "No IPv4 addresses found"; exit 1; }
@@ -135,7 +135,7 @@ ss -tlnp | grep 3proxy
 Expected result:
 
 - `3proxy.service` is `active (running)`
-- `ss` shows `VPS_IP:1080` listening
+- `ss` shows `<VPS_IP>:1080` listening
 
 A foreground systemd service with a listening socket confirms that the SOCKS5 service itself is running correctly.[cite:38][cite:42]
 
@@ -157,10 +157,10 @@ These commands verify service state, listening ports, recent logs, and the gener
 Run this from the client machine, not the VPS:
 
 ```bash
-curl -v --max-time 15 --socks5-hostname "PROXY_USER:PROXY_PASS@VPS_IP:1080" https://api.ipify.org
+curl -v --max-time 15 --socks5-hostname "<PROXY_USER>:<PROXY_PASS>@<VPS_IP>:1080" https://api.ipify.org
 ```
 
-A successful result should return `VPS_IP`, which proves that traffic is leaving through the VPS and that hostname resolution is going through the SOCKS5 proxy.[cite:52][cite:61]
+A successful result should return `<VPS_IP>`, which proves that traffic is leaving through the VPS and that hostname resolution is going through the SOCKS5 proxy.[cite:52][cite:61]
 
 ## Step 6: Single-proxy health check script
 
@@ -173,10 +173,10 @@ Save this on the client machine as `check-proxy.sh`:
 
 set -u
 
-PROXY_HOST="VPS_IP"
+PROXY_HOST="<VPS_IP>"
 PROXY_PORT="1080"
-PROXY_USER="PROXY_USER"
-PROXY_PASS="PROXY_PASS"
+PROXY_USER="<PROXY_USER>"
+PROXY_PASS="<PROXY_PASS>"
 
 SMTP_HOST="gmail-smtp-in.l.google.com"
 
@@ -215,7 +215,7 @@ A result like the following means the proxy works but port 25 is blocked:
 
 ```text
 PROXY                  LIVE   EXIT_IP          PORT25  GEO
-VPS_IP:1080   OK     VPS_IP  BLOCK   US
+<VPS_IP>:1080   OK     <VPS_IP>  BLOCK   US
 ```
 
 That means the SOCKS5 proxy is healthy even if SMTP egress is not.[cite:22][cite:60]
@@ -248,8 +248,8 @@ If both commands time out, the most likely cause is outbound SMTP filtering by t
 From the client machine:
 
 ```bash
-curl -v --max-time 15 --socks5-hostname "PROXY_USER:PROXY_PASS@VPS_IP:1080" "telnet://gmail-smtp-in.l.google.com:25" </dev/null
-curl -v --max-time 15 --socks5-hostname "PROXY_USER:PROXY_PASS@VPS_IP:1080" "telnet://smtp.gmail.com:587" </dev/null
+curl -v --max-time 15 --socks5-hostname "<PROXY_USER>:<PROXY_PASS>@<VPS_IP>:1080" "telnet://gmail-smtp-in.l.google.com:25" </dev/null
+curl -v --max-time 15 --socks5-hostname "<PROXY_USER>:<PROXY_PASS>@<VPS_IP>:1080" "telnet://smtp.gmail.com:587" </dev/null
 ```
 
 If these time out or fail while regular HTTPS proxy traffic works, the SMTP block is upstream and not a SOCKS5 configuration failure.[cite:22][cite:33]
@@ -259,7 +259,7 @@ If these time out or fail while regular HTTPS proxy traffic works, the SMTP bloc
 | Result | Meaning |
 |---|---|
 | `systemctl status 3proxy` is active and `ss` shows port 1080 listening | Proxy service is running correctly.[cite:38][cite:42] |
-| `curl --socks5-hostname ... https://api.ipify.org` returns `VPS_IP` | Proxy authentication and traffic forwarding are working.[cite:52][cite:60] |
+| `curl --socks5-hostname ... https://api.ipify.org` returns `<VPS_IP>` | Proxy authentication and traffic forwarding are working.[cite:52][cite:60] |
 | Port 25 says `BLOCK` but IP test succeeds | SOCKS5 proxy is healthy, but SMTP/25 is blocked upstream.[cite:76][cite:79] |
 | Port 587 also times out | Provider may be filtering SMTP broadly, not just port 25.[cite:65][cite:79] |
 
@@ -317,9 +317,9 @@ nc -vz -w 5 smtp.gmail.com 587
 ### On the client machine
 
 ```bash
-curl -v --max-time 15 --socks5-hostname "PROXY_USER:PROXY_PASS@VPS_IP:1080" https://api.ipify.org
-curl -v --max-time 15 --socks5-hostname "PROXY_USER:PROXY_PASS@VPS_IP:1080" "telnet://gmail-smtp-in.l.google.com:25" </dev/null
-curl -v --max-time 15 --socks5-hostname "PROXY_USER:PROXY_PASS@VPS_IP:1080" "telnet://smtp.gmail.com:587" </dev/null
+curl -v --max-time 15 --socks5-hostname "<PROXY_USER>:<PROXY_PASS>@<VPS_IP>:1080" https://api.ipify.org
+curl -v --max-time 15 --socks5-hostname "<PROXY_USER>:<PROXY_PASS>@<VPS_IP>:1080" "telnet://gmail-smtp-in.l.google.com:25" </dev/null
+curl -v --max-time 15 --socks5-hostname "<PROXY_USER>:<PROXY_PASS>@<VPS_IP>:1080" "telnet://smtp.gmail.com:587" </dev/null
 ```
 
 ## Final notes

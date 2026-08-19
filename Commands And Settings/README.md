@@ -31,6 +31,7 @@ misc {
 ```
 
 What it does:
+
 - Sets NVIDIA-specific environment variables for Hyprland on Wayland.
 - Helps with video acceleration, GLX vendor selection, cursor issues, and multi-GPU ordering.
 - Enables optimized rendering with direct scanout and new render scheduling.
@@ -46,6 +47,7 @@ debug {
 ```
 
 What it does:
+
 - Reduces or fixes window move traces in some setups.
 
 Optional older/manual GPU selection example:
@@ -55,9 +57,11 @@ Optional older/manual GPU selection example:
 ```
 
 What it does:
+
 - Manually sets GPU device priority if automatic detection is not working as expected.
 
 Useful references:
+
 - [Hyprland NVIDIA wiki](https://wiki.hypr.land/Nvidia/)
 - [Hyprland Multi-GPU wiki](https://wiki.hypr.land/Configuring/Advanced-and-Cool/Multi-GPU/#telling-hyprland-which-gpu-to-use)
 
@@ -75,6 +79,7 @@ workspace = 2,monitor:HDMI-A-1
 ```
 
 What it does:
+
 - Configures the laptop display and one external HDMI monitor.
 - Assigns workspace 1 to the internal screen and workspace 2 to the external screen.
 
@@ -103,6 +108,7 @@ hyprctl devices             # keyboards show: l "us,ee,ru", o "grp:alt_shift_tog
 ```
 
 What it does:
+
 - Enables US, Estonian, and Russian keyboard layouts.
 - Switches layouts with `Alt+Shift`.
 
@@ -138,6 +144,7 @@ cat /sys/class/power_supply/BAT0/charge_control_end_threshold
 ```
 
 What it does:
+
 - Keeps the battery between 75% and 80% — prevents stress at 100% and extends battery lifespan.
 - Thresholds are set for both BAT0 and BAT1.
 
@@ -175,6 +182,7 @@ ls /usr/share/icons/
 ```
 
 What it does:
+
 - Lets you quickly switch the tray and desktop icon theme.
 - Papirus is a good contrast-heavy option for network and status icons.
 - You can try any installed theme by replacing the name in the `gsettings set` command.
@@ -193,6 +201,7 @@ Paste this into `~/.config/waybar/config`:
 ```
 
 What it does:
+
 - Shows the active Hyprland keyboard layout in Waybar using short labels.
 
 Paste this CSS into `~/.config/waybar/style.css`:
@@ -205,6 +214,7 @@ Paste this CSS into `~/.config/waybar/style.css`:
 ```
 
 What it does:
+
 - Adds spacing and minimum width for the language module in Waybar.
 
 ## UFW and network discovery
@@ -217,9 +227,11 @@ sudo ufw allow 5355/udp
 ```
 
 What it does:
+
 - Allows mDNS and LLMNR-related UDP traffic for local network discovery.
 
 Note:
+
 - IGMP may also need separate handling because UFW can block multicast protocol traffic.
 
 ## Hyprlock and GPU-related fixes
@@ -231,6 +243,7 @@ env = WLR_DRM_DEVICES,/dev/dri/card0
 ```
 
 What it does:
+
 - Forces rendering to use the Intel GPU, which can help with DRM loops or compatibility issues.
 
 Kernel parameter for graphics resume issues:
@@ -240,12 +253,15 @@ i915.enable_psr=0
 ```
 
 Where to put it:
+
 - Add it to your kernel command line in GRUB or your bootloader configuration.
 
 What it does:
+
 - Disables Panel Self Refresh on Intel graphics, which can help with resume issues such as `unclaimed mmio`.
 
 Bluetooth delay note:
+
 - A short Bluetooth startup delay can be normal.
 - If it becomes persistent, preloading firmware may help.
 
@@ -258,6 +274,7 @@ sudo systemctl enable --now systemd-resolved
 ```
 
 What it does:
+
 - Enables and starts `systemd-resolved` immediately.
 - Useful for fixing or standardizing DNS resolution on the system.
 
@@ -270,6 +287,7 @@ sudo systemd-run --on-active=30min /usr/bin/systemctl poweroff
 ```
 
 What it does:
+
 - Schedules a poweroff 30 minutes from when the command is started.
 - Useful when you want to delay shutdown without keeping a shell open.
 
@@ -282,6 +300,7 @@ sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.ta
 ```
 
 What it does:
+
 - Prevents the system from entering sleep, suspend, hibernate, or hybrid-sleep modes.
 - Masks the systemd targets by creating symlinks to `/dev/null`.
 
@@ -292,6 +311,7 @@ sudo systemctl status sleep.target suspend.target hibernate.target hybrid-sleep.
 ```
 
 What it does:
+
 - Shows that all four targets are masked and inactive.
 
 Re-enable sleep and suspend targets:
@@ -301,6 +321,7 @@ sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.
 ```
 
 What it does:
+
 - Removes the masks, allowing the system to enter sleep, suspend, hibernate, or hybrid-sleep modes again.
 
 ## Bluetooth power on
@@ -318,6 +339,7 @@ power on
 ```
 
 What it does:
+
 - Opens the Bluetooth control shell and powers on the Bluetooth adapter.
 
 ## Compress PDF with Ghostscript
@@ -330,6 +352,7 @@ gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook \\
 ```
 
 What it does:
+
 - Compresses a PDF into a smaller file.
 - Good for sharing, uploading, or reducing document size.
 
@@ -342,6 +365,7 @@ pdftotext input.pdf output.txt
 ```
 
 What it does:
+
 - Extracts text from a PDF file into a plain text file.
 
 Here’s how to document that command in `README.md`‑style Markdown:
@@ -410,6 +434,7 @@ rsync -av /path/to/source/ /path/to/destination/
 ```
 
 What it does:
+
 - Syncs files and folders from source to destination recursively.
 - The `-a` flag (archive mode) includes recursive copying (`-r`) automatically, so all folders and files are synced.
 - `-v` shows verbose output of what's being copied.
@@ -422,10 +447,12 @@ rsync -R ~/projects/myapp/ ~/backup/myapp/
 ```
 
 What it syncs:
+
 - **Source:** All files and folders inside `~/projects/myapp/`
 - **Destination:** `~/backup/myapp/` (directory structure is preserved)
 
 Useful flags:
+
 - `-a` : Archive mode (includes recursion, preserves permissions, timestamps, etc.)
 - `-v` : Verbose (shows what's being copied)
 - `--delete` : Deletes files in destination that don't exist in source
@@ -447,6 +474,7 @@ scp /path/to/local/file user@remote-host:/path/to/remote/destination/
 ```
 
 What it does:
+
 - Securely copies files from your local machine to a remote server via SSH.
 - Uses the same authentication as SSH (keys or password).
 
@@ -457,6 +485,7 @@ scp ~/myfile.txt user@example.com:/home/user/files/
 ```
 
 What it syncs:
+
 - **Source:** `~/myfile.txt` (local file on your machine)
 - **Destination:** `/home/user/files/` on `example.com` as `user`
 
@@ -481,6 +510,7 @@ php -S 127.0.0.1:8000
 ```
 
 What it does:
+
 - Starts a built-in PHP development server on `localhost:8000`.
 - `127.0.0.1` means the server is only accessible from your local machine.
 - Access it in your browser at `http://127.0.0.1:8000`
@@ -512,6 +542,7 @@ rm filename.txt
 ```
 
 What it does:
+
 - Permanently deletes the file `filename.txt`.
 - Cannot be undone, so be careful.
 
@@ -524,6 +555,7 @@ rm -rf foldername/
 ```
 
 What it does:
+
 - `-r` : Recursively delete the folder and everything inside it (all subfolders and files).
 - `-f` : Force delete without prompting for confirmation.
 - Cannot be undone, so be very careful with this command.
@@ -535,6 +567,7 @@ rm -r foldername/
 ```
 
 What it does:
+
 - Same as above but prompts you before deleting each file (slower but safer).
 
 ## Docker Compose commands
@@ -548,6 +581,7 @@ docker compose up -d
 ```
 
 What it does:
+
 - Starts all services defined in `docker-compose.yml`.
 - `-d` flag runs containers in the background (detached mode).
 
@@ -560,6 +594,7 @@ docker compose up -d --build
 ```
 
 What it does:
+
 - Rebuilds all images from their Dockerfiles.
 - Starts containers in the background.
 - Useful when you've made changes to your code or Dockerfile.
@@ -573,6 +608,7 @@ docker compose down
 ```
 
 What it does:
+
 - Stops all running containers defined in `docker-compose.yml`.
 - Removes the containers (but keeps volumes and networks by default).
 
@@ -585,6 +621,7 @@ docker compose -p myproject up -d
 ```
 
 What it does:
+
 - `-p myproject` : Sets a custom project name (useful when running multiple instances).
 - Helpful for organizing containers by project name.
 
@@ -597,6 +634,7 @@ docker exec -it container-id bash
 ```
 
 What it does:
+
 - `-i` : Keep STDIN open even if not attached (interactive).
 - `-t` : Allocate a pseudo-terminal.
 - `-it` together gives you an interactive shell inside the container.
@@ -624,6 +662,7 @@ docker ps
 ```
 
 What it does:
+
 - Lists all running containers with their IDs, names, images, status, and ports.
 - Shows container details needed for `docker exec` commands.
 
@@ -646,6 +685,7 @@ docker cp /path/to/local/file container-id:/path/in/container/
 ```
 
 What it does:
+
 - Copies files from your local machine into a running container.
 - Works bidirectionally (container to local and local to container).
 
@@ -673,6 +713,7 @@ git add .
 ```
 
 What it does:
+
 - Stages all modified and new files for commit.
 - `.` means "everything in current directory and below".
 
@@ -685,6 +726,7 @@ git commit -m "commit message"
 ```
 
 What it does:
+
 - Creates a commit with the staged changes.
 - `-m` flag lets you add a commit message directly.
 
@@ -703,6 +745,7 @@ git push
 ```
 
 What it does:
+
 - Uploads your local commits to the remote repository (origin/main by default).
 - Pushes the current branch to its remote tracking branch.
 
@@ -715,8 +758,27 @@ git add . && git commit -m "update notes" && git push
 ```
 
 What it does:
+
 - Stages all changes, creates a commit with a generic message, and pushes it to the remote repository.
 - Use this when you want a quick all-in-one publish command.
+
+### Pull remote changes while keeping local edits (git stash workflow)
+
+Command:
+
+```bash
+git stash push -m "local settings"
+git pull
+git stash pop
+```
+
+What it does:
+
+- `git stash push -m "local settings"` temporarily shelves your uncommitted local changes (with a label so you can identify them later).
+- `git pull` fetches and merges the latest changes from the remote without conflicts with your local edits.
+- `git stash pop` re-applies your saved local changes back on top of the pulled updates.
+
+Use this when you have local settings (like this repo's configs) that you don't want to commit, but still need to pull in upstream updates.
 
 ## File and directory listing
 
@@ -729,6 +791,7 @@ lsd
 ```
 
 What it does:
+
 - Modern replacement for `ls` command with colors and icons.
 - Shows file types, permissions, and sizes in an easy-to-read format.
 
@@ -813,6 +876,7 @@ Command:
 ```
 
 What it does:
+
 - Starts the local model server in the background.
 - The server is then available for API calls or local inference.
 
@@ -825,6 +889,7 @@ Command:
 ```
 
 What it does:
+
 - Stops the running model server.
 - Useful when you need to free up GPU/CPU resources or perform maintenance.
 
@@ -837,6 +902,7 @@ Command:
 ```
 
 What it does:
+
 - Shows whether the model server is currently running or stopped.
 
 ### Restart the server
@@ -848,6 +914,7 @@ Command:
 ```
 
 What it does:
+
 - Stops and immediately starts the server again.
 - Useful for reloading configuration changes or troubleshooting issues.
 
@@ -863,6 +930,7 @@ rm -f ~/.pi/agent/ayu/checkpoints/sessions/ephemeral/.git/objects/pack/tmp_pack_
 ```
 
 What it does:
+
 - Shows how much space the stored Pi agent sessions and checkpoint sessions are using.
 - Removes the saved session logs and the `ayu` checkpoint sessions to free up disk space.
 - Removes temporary Git pack files inside the ephemeral checkpoint session tree.
@@ -876,6 +944,7 @@ rm -rf ~/.pi/agent/ayu/checkpoints/sessions
 ```
 
 What it does:
+
 - Removes stored session checkpoint data for the `ayu` agent.
 - Use this when you want to reset persisted session state.
 
@@ -890,6 +959,7 @@ pi --no-session
 ```
 
 What it does:
+
 - Makes `pi` run in no-session mode by default.
 - You can also call `pi --no-session` directly when you want to bypass sessions without an alias.
 
@@ -908,6 +978,7 @@ pi --export ~/.pi/agent/sessions/session.jsonl output.html
 ```
 
 What it does:
+
 - `pi "..."` starts an interactive agent session with an initial prompt.
 - `pi -p "..."` runs non-interactively and exits after processing the prompt.
 - `pi --continue` reopens the previous session thread.
@@ -931,6 +1002,7 @@ Both Qwen models are currently running:
 ```
 
 Both models are added as separate providers in pi's `models.json`:
+
 - `local-3b` → model ID `qwen2.5-3b-instruct` on `localhost:8000`
 - `local-7b` → model ID `qwen2.5-7b-instruct` on `localhost:8001`
 
@@ -948,6 +1020,7 @@ Command:
 ```
 
 What it does:
+
 - Without a model suffix, commands apply to both models.
 - With `3b` or `7b` suffix, you can manage individual models (useful for freeing resources).
 
@@ -970,6 +1043,7 @@ bash /home/aleks/.local/share/llama-server/start.sh stop
 ```
 
 What it does:
+
 - Frees up GPU memory and CPU resources.
 - The models can be started again anytime you need them.
 
@@ -1003,10 +1077,6 @@ bash /home/aleks/.local/share/llama-server/start.sh status
 # Stop all models
 bash /home/aleks/.local/share/llama-server/start.sh stop
 ```
-
-
-
-
 
 ## Tmux session and window management
 
@@ -1066,6 +1136,7 @@ tmux new -s codelocal -n editor \; \
 ```
 
 What it does:
+
 - Spawns a session named `codelocal` with three windows: `editor`, `build`, and `git`.
 - Lands in window 0 (the `editor` window) by default.
 - Useful for quickly setting up a project workspace with predefined window names.

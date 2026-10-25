@@ -151,6 +151,122 @@ What it does:
 Note: `/sys/class/power_supply/BAT0/charge_control_start_threshold` may read `74`
 — the battery firmware rounds the start threshold down; the TLP config itself is 75.
 
+## Battery charge hold 50–60% (this laptop — systemd unit, TLP disabled)
+
+The active charge hold on this machine is **50–60%**: charging stops at 60%
+while on AC and resumes once the battery drops to 50%. That is the
+"primarily AC use" sweet spot (Dell's AC-use band, Lenovo's 55–60% band) for
+a laptop that sits on AC most of the time.
+
+### Why a systemd unit — why plain `echo` to the BAT0 sysfs files is not enough
+
+The kernel exposes the hold as two **volatile** sysfs files:
+
+- `/sys/class/power_supply/BAT0/charge_control_start_threshold`
+- `/sys/class/power_supply/BAT0/charge_control_end_threshold`
+
+Direct `echo` writes to those files (what the earlier 75–80 attempt was) are
+lost on every reboot — the firmware resets both to 0/100. The earlier attempt
+never actually survived: by the time we checked, sysfs read 0/100, and TLP is
+**disabled** on this machine with no uncommented charge thresholds in
+`/etc/tlp.conf`, so the TLP section above is inactive here too.
+
+Two ways to make a hold survive reboots:
+
+1. **Enable TLP** and set `START/STOP_CHARGE_THRESH_BAT0` in `/etc/tlp.conf`
+   (section above). Works, but TLP's footprint is broad — PCIe ASPM, disk
+   standby, Wi-Fi power save, CPU governor, etc.
+2. **Minimal oneshot unit** — what this machine uses. It writes exactly the
+   two threshold files at boot and nothing else. That's the only reason the
+   unit exists: persistence, with zero TLP side effects.
+
+The unit:
+
+```ini
+# /etc/systemd/system/battery-charge-limit.service
+[Unit]
+Description=Hold battery charge at 50-60% (primarily AC use)
+ConditionPathExists=/sys/class/power_supply/BAT0/charge_control_end_threshold
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/sh -c 'echo 50 > /sys/class/power_supply/BAT0/charge_control_start_threshold; echo 60 > /sys/class/power_supply/BAT0/charge_control_end_threshold'
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Install/enable:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now battery-charge-limit.service
+```
+
+Verify:
+
+```bash
+cat /sys/class/power_supply/BAT0/charge_control_start_threshold  # 50
+cat /sys/class/power_supply/BAT0/charge_control_end_threshold    # 60
+cat /sys/class/power_supply/BAT0/status                          # "Not charging" while above 60%
+```
+
+If you ever enable TLP, this unit is redundant — remove it and move the
+values into `/etc/tlp.conf` instead.
+
+### Change the range
+
+Edit the two numbers in the unit's `ExecStart`, then:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart battery-charge-limit.service
+```
+
+### Temporarily top up to 100% (e.g. before a trip)
+
+```bash
+sudo sh -c 'echo 0 > /sys/class/power_supply/BAT0/charge_control_start_threshold'
+sudo sh -c 'echo 100 > /sys/class/power_supply/BAT0/charge_control_end_threshold'
+# restore the hold afterwards:
+sudo systemctl restart battery-charge-limit.service
+```
+
+### Power panel shows the wrong limit (75–80) — known Omarchy/UPower quirk
+
+Omarchy's power panel gets the limit from `omarchy-battery-status`, which
+prefers UPower over sysfs. UPower never reads back the sysfs values — it
+reports the udev hwdb default `CHARGE_LIMIT=75,80` (from
+`/usr/lib/udev/hwdb.d/60-upower-battery.hwdb`), so the widget shows 75–80%
+even though the kernel enforces 50/60. Known upstream issues:
+`basecamp/omarchy#7374` and `#9586` (fix: script should prefer sysfs).
+
+Local cosmetic override (applied on this machine): create the hwdb override
+with a single line (avoids heredoc paste issues):
+
+```bash
+printf 'battery:*:*:dmi:*\n CHARGE_LIMIT=50,60\n' | sudo tee /etc/udev/hwdb.d/61-battery-local.hwdb
+sudo systemd-hwdb update
+sudo udevadm trigger /sys/class/power_supply/BAT0   # path is positional, not -p
+sudo pkill upowerd                                   # upowerd is D-Bus-activated; there is no systemd unit
+```
+
+After that `upower -i <bat>` shows 50%/60% and the panel reads
+"Charge limit 50-60%". Purely cosmetic — enforcement is always the kernel.
+
+### Full revert (back to normal 0–100% charging)
+
+```bash
+sudo systemctl disable --now battery-charge-limit.service
+sudo rm /etc/systemd/system/battery-charge-limit.service
+sudo sh -c 'echo 0 > /sys/class/power_supply/BAT0/charge_control_start_threshold'
+sudo sh -c 'echo 100 > /sys/class/power_supply/BAT0/charge_control_end_threshold'
+sudo rm /etc/udev/hwdb.d/61-battery-local.hwdb
+sudo systemd-hwdb update
+sudo pkill upowerd
+```
+
 ## Icon theme switching
 
 Current icon theme:

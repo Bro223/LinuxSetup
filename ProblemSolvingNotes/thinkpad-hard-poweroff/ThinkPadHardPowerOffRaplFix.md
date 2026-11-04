@@ -70,25 +70,60 @@ before: CPU=100000mC THM=98000mC load=1.6   (pinned at Tjmax, throttling)
 after:  CPU=56000mC  THM=55000mC load=1.1
 ```
 
-### Files installed
+### Files installed (v2 — ceiling semantics, self-healing)
 
 | File | Purpose |
 |---|---|
-| `/usr/local/bin/rapl-power-limit.sh` | writes the two limits |
+| `/usr/local/bin/rapl-power-limit.sh` | clamps PL1/PL2 **down** if above the ceiling (or 0 = firmware default); never raises; finds the RAPL domain dynamically |
 | `/etc/systemd/system/rapl-power-limit.service` | oneshot, runs at every boot (`multi-user.target`), `RemainAfterExit=yes` |
+| `/etc/systemd/system/rapl-power-limit.timer` | re-runs the service 2 min after boot, then every 10 min (self-healing) |
 | `/etc/rapl-power-limit.orig` | original firmware values + restore commands |
+
+**v2 semantics (updated 2026-11-04):** the script enforces a *ceiling*, not a fixed value — it
+only lowers a limit that is above the ceiling (or `0`, which in RAPL means "firmware default" =
+90/15... 90/135 on this machine) and never raises anything. Consequences:
+
+- firmware's aggressive 90/135 at every cold boot → clamped to 45/90 within seconds
+- anything that pushes limits back up at runtime → clamped again within 10 min (timer)
+- eco mode / manually written *lower* limits → left untouched while the system is on
+  (a full power cycle always resets RAPL to firmware values, then the boot service clamps to 45/90)
+
+To change the ceiling itself (e.g. a stricter eco default), edit `PL1_MAX` / `PL2_MAX` in the
+script.
 
 ### Re-apply from scratch (fresh system / after reinstall)
 
 ```bash
 sudo tee /usr/local/bin/rapl-power-limit.sh >/dev/null <<'EOF'
 #!/bin/bash
-# Conservative CPU power limits (crash mitigation, see ProblemSolvingNotes/thinkpad-hard-poweroff)
-# Original firmware values saved in /etc/rapl-power-limit.orig
-P=/sys/class/powercap/intel-rapl:0
-[ -d "$P" ] || exit 1
-echo 45000000 > $P/constraint_0_power_limit_uw   # PL1 45W (TDP)
-echo 90000000 > $P/constraint_1_power_limit_uw   # PL2 90W (Intel MTP)
+# CPU power CEILING - crash mitigation on ThinkPad P15 Gen 1 (i9-10885H).
+# Firmware ships PL1 90W / PL2 135W (135W burst is 50% above Intel MTP) - suspected
+# trigger of the hard power-off crashes. Enforces Intel's envelope as a ceiling:
+#   PL1 (long term)  never above 45 W (TDP)
+#   PL2 (short burst) never above 90 W (Intel MTP)
+# Lower values (eco mode, manual tuning) are left untouched.
+# 0 in RAPL means "firmware default" (= 90/135 here), so it is treated as over-ceiling.
+# Docs: MyScripts/LocalRepos/LinuxSetup/ProblemSolvingNotes/thinkpad-hard-poweroff/
+PL1_MAX=45000000
+PL2_MAX=90000000
+
+# Package domain = the intel-rapl domain that exposes constraint_1 (short term).
+# Found dynamically so a powercap renumbering in a future kernel cannot break this.
+P=""
+for d in /sys/class/powercap/intel-rapl:*; do
+    if [ -f "$d/constraint_1_power_limit_uw" ]; then P="$d"; break; fi
+done
+[ -n "$P" ] || exit 0
+
+cur1=$(cat "$P/constraint_0_power_limit_uw" 2>/dev/null) || exit 0
+cur2=$(cat "$P/constraint_1_power_limit_uw" 2>/dev/null) || exit 0
+
+if [ "$cur1" = "0" ] || [ "$cur1" -gt "$PL1_MAX" ] 2>/dev/null; then
+    echo "$PL1_MAX" > "$P/constraint_0_power_limit_uw"
+fi
+if [ "$cur2" = "0" ] || [ "$cur2" -gt "$PL2_MAX" ] 2>/dev/null; then
+    echo "$PL2_MAX" > "$P/constraint_1_power_limit_uw"
+fi
 EOF
 sudo chmod 755 /usr/local/bin/rapl-power-limit.sh
 
@@ -106,8 +141,29 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOF
 
+sudo tee /etc/systemd/system/rapl-power-limit.timer >/dev/null <<'EOF'
+[Unit]
+Description=Periodically enforce CPU power ceiling (crash mitigation)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target
+EOF
+
 sudo systemctl daemon-reload
 sudo systemctl enable --now rapl-power-limit.service
+sudo systemctl enable --now rapl-power-limit.timer
+```
+
+### Clamp behavior — tested 2026-11-04
+
+```
+simulated firmware state:  PL2=135000000  -> run script -> PL2=90000000  (clamped down)
+simulated eco state:       PL2=40000000   -> run script -> PL2=40000000  (preserved)
+final target state:        PL1=45000000   PL2=90000000
 ```
 
 ### Verify
@@ -121,20 +177,21 @@ systemctl is-active rapl-power-limit.service                       # active
 ## 5. Is the fix permanent? What can break it?
 
 **Survives (no action needed):**
-- reboots — unit re-applies at every boot
-- `pacman -Syu`, omarchy updates, kernel updates — unit + script live in `/etc` and `/usr/local`,
-  which package upgrades never touch; RAPL sysfs path (`/sys/class/powercap/intel-rapl:0`) is stable
-  across kernel versions
-- **omarchy panel power-profile selector** — tested 2026-11-04: switching
-  `balanced` → `performance` via `powerprofilesctl` (the panel's backend, power-profiles-daemon)
-  leaves our limits untouched. Extra safeguard: the kernel clamps OS PL1 writes at 45 W on this
-  platform (`constraint_0_max_power_uw = 45000000`), so PL1 cannot be pushed back up from userspace
-  anyway.
+- reboots — service re-applies at every boot; timer re-checks 2 min after boot and every 10 min
+- `pacman -Syu`, omarchy updates, kernel updates (both custom and stock — see §11) — unit +
+  script live in `/etc` and `/usr/local`, which package upgrades never touch; the script finds the
+  RAPL package domain dynamically, so even a powercap renumbering in a future kernel cannot break it
+- **omarchy panel power-profile selector** — tested 2026-11-04 on **all three** profiles
+  (performance / balanced / power-saver): none of them changes the RAPL limits (details in §10).
+  Extra safeguard: the kernel clamps OS PL1 writes at 45 W on this platform
+  (`constraint_0_max_power_uw = 45000000`), so PL1 cannot be pushed back up from userspace anyway
+- anything that pushes the limits back up at runtime — the 10-min timer clamps them again
 
 **Can break it (rare, all recoverable):**
-- someone deletes the unit/script → re-apply block in §4
+- someone deletes the unit/script/timer → re-apply block in §4
 - a BIOS update that changes RAPL handling → the unit still wins after boot (applies at
-  multi-user.target); the firmware's aggressive values only apply during the first seconds of boot
+  multi-user.target, re-checked every 10 min); the firmware's aggressive values only apply during
+  the first seconds of boot
 - a future kernel without the powercap/RAPL interface (very unlikely)
 - **inherent limit:** the 1-second-at-boot deaths happen before any userspace unit can run — no
   OS-side fix can protect the first moments of a boot. If those recur, it is purely hardware.
@@ -188,9 +245,10 @@ disable `crashmon` (the 5 Hz one) and keep the 10 s sampler.
 1. **BIOS EC event log — the decisive evidence.** Next POST: press `F1` → Event Log / Hardware
    Events; look for power-loss / overcurrent / undervoltage codes with timestamps. Screenshot it.
    This decides whether the laptop goes to Lenovo service (board/VRM repair).
-2. **A/B kernel test:** at the next *planned* reboot, boot stock `linux` (`7.2.11-arch1-1`,
-   NVIDIA already DKMS-built for it) from Limine instead of `linux-omarchy` — separates the
-   custom kernel/BORE scheduler from the hardware theory.
+2. **A/B kernel test** (see §11 for what the two kernels actually are): at the next *planned*
+   reboot, pick the stock entry in the Omarchy Bootloader menu — under **Omarchy** the entry
+   commented `//linux`, "Kernel version: 7.2.11-arch1-1" (`omarchy_linux.efi`) instead of the
+   default `//linux-omarchy` (7.2.8-9-omarchy). NVIDIA is already DKMS-built for the stock kernel.
 3. Optional: **Memtest86+** via F12 overnight to fully retire RAM.
 
 ### Interpretation matrix after the next reboot/crash
@@ -212,3 +270,51 @@ disable `crashmon` (the 5 Hz one) and keep the 10 s sampler.
 - `usb 1-9: reset full-speed USB device` every ~13.5 min (built-in Synaptics fingerprint reader)
 - GPU PCIe link at Gen1 x16 (2.5 GT/s) vs Gen3 capability (chronic, pre-existing)
 - GPU power limit is the driver default 90 W (`nvidia-smi -q -d POWER`) — left as-is
+
+## 10. Power profiles (Omarchy panel) and eco mode — tested 2026-11-04
+
+The panel's backend is **power-profiles-daemon** (`powerprofilesctl`). Available profiles:
+`performance`, `balanced`, `power-saver` (eco) — all with `CpuDriver: intel_pstate` and
+`PlatformDriver: platform_profile`.
+
+**Empirical result (all three profiles tested):** switching profiles does **not** touch the RAPL
+limits — 45/90 stays 45/90. On this platform PPD acts through intel_pstate and the ACPI
+`platform_profile` interface (firmware performance level), not through RAPL.
+
+Practical answer to "if I select eco, is it still 45/90?":
+
+- **Yes — 45/90 is the ceiling, and it stays in eco mode.** Eco mode still saves power through its
+  own mechanisms (CPU frequency/EPP/firmware performance level), it just doesn't lower the RAPL
+  wattage ceiling.
+- Manually writing a *lower* RAPL limit (e.g. `echo 25000000 > .../constraint_0_power_limit_uw`)
+  also works and the ceiling-clamp leaves it alone while the system is on. Note that a full power
+  cycle always resets RAPL to the firmware values (90/135) first, then the boot service clamps
+  back to 45/90 — so a manual lower value is *not* persistent across reboots. For a persistent
+  eco default, edit `PL1_MAX`/`PL2_MAX` in `/usr/local/bin/rapl-power-limit.sh`.
+
+## 11. Kernels: `linux-omarchy` (custom, running) vs `linux` (stock, installed)
+
+The machine does **not** run stock Arch Linux kernel. Both kernels are installed side by side:
+
+| Package | Version | What it is | State |
+|---|---|---|---|
+| `linux-omarchy` | 7.2.8-9 (built 2026-10-17) | Omarchy project **custom** kernel: 7.2.8 LTS base + Omarchy patches, notably the **"BORE CPU Scheduler modification 7.0.0"** (custom CPU scheduler) | **running** — default boot entry |
+| `linux` | 7.2.11.arch1-1 | Arch **stock** kernel | installed, bootable, NVIDIA 615.78.08 DKMS-built for it |
+
+**How updates work (what `pacman -Syu` means here):**
+
+- The two are **independent pacman packages** with independent upstreams: `linux` updates come
+  from the official Arch repos (new 7.2.x point releases), `linux-omarchy` updates come only when
+  the Omarchy project ships a new build (from the omarchy repo enabled on this system).
+- **Nothing rewrites or overwrites the other.** A stock `linux` update replaces only the stock
+  kernel files; the omarchy kernel keeps running until Omarchy publishes a new build *and* you
+  reboot into it. Boot entries are auto-generated UKIs (`/boot/limine.conf`, produced by
+  limine-entry-tool): one entry per installed kernel version.
+- The crash fix itself (RAPL clamp, traps, logrotate) is **userspace** (`/etc` + `/usr/local`)
+  and kernel-independent: it applies identically to whichever kernel is booted, and survives all
+  of the above updates untouched.
+
+**A/B test procedure:** reboot → Omarchy Bootloader menu → under **Omarchy** select the entry
+commented `//linux` ("Kernel version: 7.2.11-arch1-1") instead of the default `//linux-omarchy`
+("7.2.8-9-omarchy"). If the machine is stable on stock but crashes on omarchy, the custom
+scheduler/kernel is in play; if both behave the same, the hardware power-path theory holds.

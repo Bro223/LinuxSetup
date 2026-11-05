@@ -501,3 +501,70 @@ far is evidence, not proof.
 - boot 0 (21:25:54), kernel 7.2.15-1-omarchy, up 1 h 13 m, zero power events
 - AC=1, RAPL PL1=45 W / PL2=90 W active, all trap services active
 - battery 56% / 11.648 V, in hold band; NVMe unsafe_shutdowns frozen at 158/199
+
+## 14. BIOS event log — confirmed to exist on 20ST, exact access + partial decode (2026-11-05)
+
+### Does it exist on the P15 Gen 1 (20ST)? — yes, three confirmations
+
+1. **Lenovo commercial-ThinkPad UEFI documentation**: "View UEFI BIOS Event log — Restart the
+   computer. When the logo screen is displayed, press **F1**. Select **Main ➙ BIOS Event log**.
+   Then press Enter." Entries carry date, time, description; event types include **Power On**
+   (power-on reason, boot mode, **shutdown reason** — exactly the fields we need), POST Error,
+   System Boot, System Tamper, Device Change, Setup Change, Subcomponent Self-healing.
+2. **P15 Gen 1 Hardware Maintenance Manual**: **"Self Healing BIOS: Yes"** — subcomponent / self-heal
+   events are recorded in the BIOS event log. The P15 user guide confirms F1 = UEFI BIOS entry key
+   for this model ("When the logo screen is displayed, press F1").
+3. **Verified directly on this machine (read-only):** the log's backing UEFI variables exist and
+   are readable from Linux:
+   - `EventLog-57a34c69-4d62-0b7e-86e4-939c5c9b7c93` (68 B)
+   - `SMBIOSELOG000-c3eeae98-23bf-412b-ab60-efcbb48e1534` (3974 B) + `SMBIOSELOGNUMBER` (= 1)
+   - `LenovoLogging-37d3e8e0-8858-4b84-a106-244bb8cbfdc3` (24 B)
+
+### Exact access steps
+
+**Path A — BIOS UI (canonical):**
+
+1. Power on / restart. As the Lenovo logo appears, **tap F1 rapidly**. If it doesn't catch:
+   `Enter` then F1, or `Fn+F1` (Lenovo POST key capture is notoriously picky — keep tapping).
+2. In setup go to the **Main tab** (the *first* tab). The entry is near the top, labeled
+   **"BIOS Event log"** (some builds: "BIOS Log"). Enter. PgUp/PgDn scroll, Enter selects an
+   entry's details, F3 exits. If Main doesn't list it on this build, check the other tabs
+   (Config / Device / Security / Startup / Restart) — placement varies by BIOS build.
+3. The log persists across reboots, so it can be read at any normal POST — including the one
+   following a crash (which is when it matters).
+
+**Path B — from Linux (verified working here — no BIOS entry needed, and works even when the
+BIOS UI is hard to catch):**
+
+```bash
+# Snapshot NOW (baseline), then run again after EVERY crash — diff the two dumps.
+# The variable whose bytes changed tells you which event class the firmware recorded
+# (abnormal power-off, POST error, self-heal, …) without needing Lenovo's decode tables.
+sudo od -A x -t x1z /sys/firmware/efi/efivars/EventLog-57a34c69-4d62-0b7e-86e4-939c5c9b7c93 | tee -a /var/log/crash-trap.efi.log
+sudo od -A x -t x1z /sys/firmware/efi/efivars/SMBIOSELOG000-c3eeae98-23bf-412b-ab60-efcbb48e1534 | tee -a /var/log/crash-trap.efi.log
+echo "--- snapshot $(date +%FT%T) ---" >> /var/log/crash-trap.efi.log
+```
+
+**Path C — F12 one-time boot menu:** tap F12 (or `Fn+F12`) at the logo; on some ThinkPad builds
+the menu lists a "BIOS Log" / "Diagnostics" entry alongside the boot devices.
+
+### Partial decode of current contents (honest — format is Lenovo-proprietary)
+
+- **`EventLog`** = 8 × little-endian u32 slots. Six decode as Unix timestamps:
+  **2026-03-14 12:52:52 → 12:57:04 EET**, clustered within ~5 minutes (a firmware maintenance
+  day; the installed BIOS 1.98 is dated 2026-03-24 — consistent). Two slots were **written today
+  (Nov 05)**; their values decode as Unix seconds to **2027-11-05/06 — exactly one year in the
+  future**, i.e. plausibly warranty/expiration-style fields or a different unit. Not definitive.
+- **`SMBIOSELOG000`** = 7 fixed 16-byte records: `08 90 <class> 01 01 00 <u16 counter> 00 02 …`.
+  Counters (u16 LE): 1792 / 1280 / 1280 / 4101 / 5126 / 9733 / 21250. If these are **minutes
+  since event** (most likely), the events map to ≈ **Nov 04 16:45, Nov 05 01:20, Nov 05 01:20,
+  Nov 03 10:20, Nov 02 06:40, Oct 30 21:40, Oct 22 18:20 (2026)** — i.e. the firmware *does*
+  record recent activity, including around the crash day. Exact semantics need Lenovo's format
+  documentation; the snapshot+diff method (Path B) is usable regardless of the decode.
+
+### Why it was hard to find
+
+- It sits on the **Main** tab (not under Security/Startup, where "log" entries are usually
+  expected), and the F1 window at POST is easy to miss.
+- During the boot-loop failures POST never completed cleanly, so the BIOS UI wasn't reliably
+  reachable in that state — Path B (Linux) is the dependable route going forward.

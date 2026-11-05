@@ -393,3 +393,111 @@ it booted only after plugging AC back in.**
    vs replacement with the EC log in hand).
 5. **Data safety:** auto-backup is still disabled (prior user decision). Given the escalated
    failure mode, re-enable it: `sudo systemctl enable --now auto-backup.timer` (units kept).
+
+## 13. Stability analysis 2026-11-05 (evening) — what changed, what didn't, and the current theory
+
+Context: after the 20:25:04 crash + battery-only boot loop, the machine ran three consecutive
+stable sessions (5 h 41 m + 8.5 min + ongoing) with zero power events. User changed nothing.
+This section is a read-only deep-dive into what actually correlates with the stability.
+
+### Boot timeline (all local time)
+
+| Boot | Window | Duration | Kernel | End |
+|---|---|---|---|---|
+| Nov 04 `-1` | 19:28:57 → 20:25:04 | 56 min | 7.2.8-9-omarchy (old) | **CRASH (captured by traps)** |
+| Nov 05 morning | — | — | — | battery-only boot loop; recovered via **emergency (puncture) button + AC** |
+| Nov 05 `-2` | 15:34:38 → 21:15:24 | 5 h 41 m | **7.2.8-9-omarchy (old)** | clean shutdown (verified unmount sequence) |
+| Nov 05 `-1` | 21:16:24 → 21:24:59 | 8.5 min | **7.2.15-1-omarchy (new)** | clean shutdown (verified) |
+| Nov 05 `0` | 21:25:54 → ongoing | 70+ min | 7.2.15-1-omarchy (new) | running, stable |
+
+**Key fact: the 5 h 41 m stable session ran the OLD kernel.** The new kernel only became
+active at the 21:16 reboot. The stability therefore *predates* any kernel/software change.
+
+### What the omarchy update actually changed (pacman.log, Nov 05 15:39–16:01)
+
+- `linux-omarchy 7.2.8-9 → 7.2.15-1` — a **prebuilt** Omarchy-project kernel (built Mon 02 Nov
+  2026), installed at 15:40, activated only at the 21:16 reboot
+- `omarchy` / `omarchy-settings 4.0.6-1 → 4.5.0-3`, plus app/IME packages (masnap, hype,
+  monologue, owe, disktree, fcitx5 stack, …)
+- `power-profiles-daemon 0.30-1` **replaced by `omarchy-power-profiles-daemon 0.30-3`** (userspace)
+- **No BIOS/EC/firmware change** — DMI still `N30ET62W (1.98) 03/24/2026` on all boots
+
+### What the traps recorded during the stable period
+
+- 3 consecutive boots, all clean; **zero power events** (no gaps in the 5 Hz log, no kernel
+  errors, no charger/i2c anomalies)
+- **AC never dropped**: `ac_on=0` absent in ~123,000 five-Hz samples across all three boots
+- Battery: charged overnight on AC (12.47 V charge pulse at the 15:34 boot), then relaxed to and
+  held ~11.648 V inside the 50–60% hold band (56%) — rock-stable for 12+ h
+- **NVMe `unsafe_shutdowns` frozen at 158/199** since the 20:25:04 crash → zero hard power
+  losses since
+- Sustained heavy load survived: load peaks **21–30** after ~21:00, CPU repeatedly at 100 °C
+  Tjmax (legal 90 W PL2 bursts, thermal throttle active), GPU idle (0–1%, ~10 W). Thermal
+  throttling yes, power loss no.
+- **State at the moment of death (Nov 04 20:25:04, sampler 10 s):** CPU package 60–63 °C,
+  THM 60 °C, GPU 54 °C, load 0.02–0.09. The crash was neither hot nor loaded.
+
+### Current theory (ranked, honest)
+
+**T1 (leading) — a marginal, *latching* fault in the power path (TPS6598x PMIC / 19 V input
+stage / connector), temporarily cleared by the emergency-button cold reset.**
+
+- Fits every observation: crash at idle + cool + on AC (no load correlation); 1-second-at-POST
+  deaths (boot inrush); the post-crash battery-only boot loop (a latched PMIC state that cannot
+  sustain battery-only inrush); recovery only after emergency reset + AC; subsequent stability.
+- A latching fault is exactly how a component behaves when it is *degrading, not dead*:
+  it faults on some transient, stays faulted (hence repeated failed reboots), and a true cold
+  power cycle (emergency button discharges the PMIC rails and resets the EC/PMIC state machine)
+  clears it — until the next triggering transient.
+- This explains "I changed nothing but it works now": **the emergency button *is* the
+  intervention.** It is a hardware-level cold reset the OS never sees. The fault is not cured,
+  it is in a cleared state.
+
+**T2 (variant of T1) — battery inrush or battery connector marginality.** The 18% capacity
+loss and 130 cycles are moderate; overnight AC charging parked the pack mid-SOC (lowest
+internal resistance). Explains the battery-only loop well; explains the on-AC idle crash less
+well unless the AC input side glitched and the battery could not backfill. The battery-removal
+test (§12.4) remains the discriminator.
+
+**T3 (demoted) — firmware RAPL 135 W bursts.** The captured crash happened *with the 45/90 cap
+active*, at idle, at 60 °C. Not the trigger. The cap stays (thermal + power-smoothing benefit)
+but is not the cure.
+
+**T4 (demoted) — custom kernel / BORE scheduler.** Stable on both the old (5 h 41 m) and the new
+(ongoing) omarchy kernel. No correlation.
+
+**T5 (minor) — ambient temperature.** The crash cluster was on a warm evening; a marginal
+thermal solder joint fails hot. No temperature data for the 16:16–17:15 cluster (traps weren't
+sampling CPU temp yet), and the 20:25 death at 60 °C weakens a purely thermal story. Unproven.
+
+### Why it "fixed itself" — three contributing factors
+
+1. **The emergency-button cold reset** (the only real change that happened) — cleared the
+   latched power-path state. This is now a *documented, known-working recovery procedure*.
+2. **100% AC operation with the battery parked mid-SOC in the 50–60% hold band** — the least
+   stressed configuration for a marginal power path (no inrush demands, no charge/discharge
+   switching).
+3. **The RAPL 45/90 cap** lowers sustained board power and smoothing transients versus the
+   pre-Nov-04 90/135 state — a marginal power path tolerates lower, smoother loads better.
+
+Plus the honest caveat: an intermittent fault can simply be in a dormant window. Stability so
+far is evidence, not proof.
+
+### Implications and recommendations (no changes made — analysis only)
+
+1. Treat the machine as **"marginal power path, currently cleared"** — expect possible
+   recurrence. Recovery procedure if it dies and won't boot: **emergency (puncture) button,
+   then plug in AC** (known-working).
+2. **Re-enable the backup** — the risk is now demonstrated, not hypothetical:
+   `sudo systemctl enable --now auto-backup.timer`.
+3. **EC event log (F1 at POST) remains the single decisive piece of evidence** for Lenovo
+   service; the battery-removal test is the best home-side discriminator (§12).
+4. **Don't rely on battery-only operation** until the power path is serviced.
+5. **Traps are proven** — two successful captures in two days (death moment at 200 ms
+   resolution). Keep them running; if it recurs, we'll know exactly what state it died in.
+
+### State at time of writing (2026-11-05 22:38)
+
+- boot 0 (21:25:54), kernel 7.2.15-1-omarchy, up 1 h 13 m, zero power events
+- AC=1, RAPL PL1=45 W / PL2=90 W active, all trap services active
+- battery 56% / 11.648 V, in hold band; NVMe unsafe_shutdowns frozen at 158/199

@@ -318,3 +318,78 @@ The machine does **not** run stock Arch Linux kernel. Both kernels are installed
 commented `//linux` ("Kernel version: 7.2.11-arch1-1") instead of the default `//linux-omarchy`
 ("7.2.8-9-omarchy"). If the machine is stable on stock but crashes on omarchy, the custom
 scheduler/kernel is in play; if both behave the same, the hardware power-path theory holds.
+
+## 12. Recurrence 2026-11-05 — crash captured at idle on AC + battery-only boot loop
+
+**User report (2026-11-05):** same silent hard stop. Afterwards the laptop would not boot:
+fans spin, power on, screen **completely** off (not dimmed), repeated power-button presses had no
+effect, the emergency (puncture) button was required. **Battery-only → black screen every time;
+it booted only after plugging AC back in.**
+
+### The traps captured this crash (first successful capture)
+
+| Source | Last record before death |
+|---|---|
+| crashmon (5 Hz) | `2026-11-04 20:25:03.888 bat_v=11728000 bat_s=Not charging ac_on=1 load=0.04` — next sample never arrived. Death in the 200 ms after. |
+| journal | last record `20:20:55` (wpa_supplicant PMKSA cache — benign Wi-Fi noise). **Zero kernel messages 20:15 → 20:25.** |
+| NVMe | `unsafe_shutdowns`: nvme0 = 158, nvme1 = 199 (both increment — board-level power loss at the drive level) |
+
+**State at death: AC adapter connected, CPU idle (load 0.04), RAPL 45/90 W cap active**
+(`rapl-power-limit.service` + `.timer` verified running on that boot).
+
+### What this changes
+
+1. **Died at idle on AC with the cap active** → "CPU 135 W burst overloading the VRM" is no
+   longer the leading theory. Board power at idle is ~20–30 W — nowhere near any
+   power-delivery limit.
+2. **Boots only on AC, never on battery-only, after the crash** → the failure sits in the
+   power-delivery path, below the OS. It is **not a bootloader problem**: Limine never runs
+   (fans + black screen = POST stage), a bootloader fault would not appear after a power-loss
+   event, and would not be cured by plugging in AC.
+3. **Suspects, in order of likelihood:**
+   - **TPS6598x PMIC / charger path** — the IC managing AC input + charging (visible in
+     upower as `tps6598x-source-psy-i2c-INT3515:00`). A fault can cut board power instantly
+     (nothing the OS can log) and latch into a state that cannot sustain battery-only boot
+     inrush, but can once AC is re-applied — exactly the observed recovery behavior.
+   - **19 V input stage / DC jack / aged input caps** — classic end-of-life failure on
+     2019–2020 hardware; marginal input paths drop out randomly and again under boot inrush.
+   - **Battery inrush or connector** — battery has 18% capacity loss (76.7/94 Wh, 130 cycles);
+     boot inrush on battery alone may sag the rails below threshold; a loose/corroded internal
+     battery connector produces exactly this battery-only signature.
+   - CPU/GPU VRM stage — less likely: VRM faults usually trigger under load, not idle.
+4. **Why the Lenovo diagnostics passed but the machine still dies:** quick/standard tests run
+   on AC and do not test boot inrush from battery, charger/PMIC fault latch, or rail stability.
+   Passing them does not clear the power path.
+5. **Why the omarchy/OS update running on 2026-11-05 cannot fix this:** the failure is below
+   the OS (the machine dies in POST, where no Linux code runs). BIOS is already at the latest
+   Lenovo firmware for 20ST001MGE (N30ET62W, 1.98); no newer EC firmware exists. If the machine
+   stabilizes after the update, that is coincidence or load-pattern correlation, not a causal fix.
+
+### Battery snapshot (2026-11-05, read-only)
+
+- 56%, 11.65 V, 76.7 Wh / 94 Wh design (81.6%), 130 cycles, capacity-level "Normal"
+- 50–60% charge-limit band active ("Hold battery charge at 50-60%", thinkpad_acpi stop=60)
+- no charger/PMIC i2c errors in this boot's kernel log (only the known-benign nvidia/ucsi i2c noise)
+
+### System state at capture (2026-11-05 15:40)
+
+- RAPL 45/90 W active; all trap services active (crash-trap-sampler, crashmon,
+  rapl-power-limit.service + .timer, logrotate.timer)
+- GPU idle 47 °C / 10.3 W; AC online
+- CPU package hit Tjmax (100 °C) during the omarchy update — DKMS compile bursts within the
+  allowed 90 W PL2 burst envelope (thermal, not a crash mechanism; fans audible)
+- **no system changes were made during this diagnosis — read-only, per user instruction**
+
+### Next steps (priority order)
+
+1. **BIOS EC event log — the decisive evidence.** At next POST, press `F1` → Event Log /
+   Hardware Events. Record every code + timestamp. If the EC saw a power-loss / overcurrent /
+   undervoltage event, this names the failure for Lenovo service.
+2. **Full (not quick) Lenovo diagnostics, run on AC**, with the extended battery test if offered.
+3. **Battery-removal test** (if comfortable opening the bottom cover): disconnect the internal
+   battery, run on AC only for a few hours. Stable → battery/connector path implicated. Dies
+   even on AC-only → board power path (PMIC/input stage), definitive for service.
+4. **Lenovo service** with this evidence package (machine is out of warranty — decide repair
+   vs replacement with the EC log in hand).
+5. **Data safety:** auto-backup is still disabled (prior user decision). Given the escalated
+   failure mode, re-enable it: `sudo systemctl enable --now auto-backup.timer` (units kept).

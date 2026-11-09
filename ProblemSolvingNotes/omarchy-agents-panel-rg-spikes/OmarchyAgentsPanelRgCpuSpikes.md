@@ -3,7 +3,8 @@
 - **Date:** 2026-11-09
 - **Machine:** Lenovo ThinkPad P52, Intel i7-8850H (6C/12T, TDP 45W, RAPL-capped at PL1 45W / PL2 78W), Quadro P1000 Mobile
 - **OS:** Arch + Omarchy 4.5.0-3, kernel `7.2.15-1-omarchy`, Hyprland 0.56.2
-- **Status:** FIXED — plugin disabled
+- **Status:** FIXED — plugin disabled. User confirmed the microfreezes stopped after the
+  disable (2026-11-09); these rg bursts were the dominant CPU-saturation source.
 
 ## 1. Problem
 
@@ -89,6 +90,9 @@ Reversible with `omarchy plugin enable omarchy.agents`.
 ## 7. Verification / monitoring
 
 - `omarchy plugin list` shows `omarchy.agents … disabled`.
+- **Session store decision (2026-11-09):** `~/.pi/agent/sessions` (1.5 GB / 290 files) is
+  deliberately **kept as-is** — old conversations are wanted back for resuming past work.
+  Revisit trimming only if the store grows much larger.
 - If spikes ever recur, redeploy the watcher approach: poll `pgrep rg`, log
   `ps -o ppid=` + parent/grandparent cmdlines. Full evidence from this incident is
   in the (since removed) `/tmp/rg-watcher.log`; the capture format above is the template.
